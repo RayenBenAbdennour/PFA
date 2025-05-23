@@ -1,0 +1,3 @@
+import pandas as pd
+train1 = pd.read_csv('train_FD001.txt', delimiter=' ')
+train1
