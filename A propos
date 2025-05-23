@@ -1,0 +1,6 @@
+🛠 Étude comparative de méthodes IA pour la prédiction du RUL des moteurs turbofan
+🔍 Méthodes comparées : ELM, DOS-ELM, DL-RNN, LSTM, BLSTM
+⚙️ Langages & outils : Python, NumPy, Pandas, Scikit-learn, TensorFlow, Keras, SolidWorks
+📊 Objectif : Évaluer la précision, la robustesse et la complexité des modèles pour la maintenance prédictive.
+📈 Résultat : BLSTM obtient la meilleure performance (R² = 0.88), tandis que ELM offre une rapidité d'entraînement idéale pour les systèmes en temps réel.
+📌 Ce projet met en lumière l'importance du prétraitement des données et l'équilibre entre efficacité et coût computationnel.
