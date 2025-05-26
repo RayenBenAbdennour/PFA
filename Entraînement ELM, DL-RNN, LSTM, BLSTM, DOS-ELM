@@ -1,0 +1,176 @@
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import MinMaxScaler
+
+# Charger les données FD001
+train_data = pd.read_csv('train_FD001.txt', sep='\s+', header=None)
+test_data = pd.read_csv('test_FD001.txt', sep='\s+', header=None)
+rul_data = pd.read_csv('RUL_FD001.txt', sep='\s+', header=None)
+
+# Noms des colonnes
+# The original code was creating 23 columns, but the dataset has 26
+# This line now creates 26 column names to match the data
+columns = ['unit_number', 'time_cycle'] + [f'sensor_{i}' for i in range(1, 25)]
+
+train_data.columns = columns
+test_data.columns = columns
+rul_data.columns = ['RUL']
+
+# Calculer le RUL pour l'entraînement
+def compute_rul(df):
+    rul = []
+    for unit in df['unit_number'].unique():
+        unit_data = df[df['unit_number'] == unit]
+        max_cycle = unit_data['time_cycle'].max()
+        rul.append(max_cycle - unit_data['time_cycle'])
+    return np.concatenate(rul)
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import MinMaxScaler
+
+# Charger les données FD001
+train_data = pd.read_csv('train_FD001.txt', sep='\s+', header=None)
+test_data = pd.read_csv('test_FD001.txt', sep='\s+', header=None)
+rul_data = pd.read_csv('RUL_FD001.txt', sep='\s+', header=None)
+
+# Noms des colonnes
+# The original code was creating 23 columns, but the dataset has 26
+# This line now creates 26 column names to match the data
+columns = ['unit_number', 'time_cycle'] + [f'sensor_{i}' for i in range(1, 25)]
+
+train_data.columns = columns
+test_data.columns = columns
+rul_data.columns = ['RUL']
+
+# Calculer le RUL pour l'entraînement
+def compute_rul(df):
+    rul = []
+    for unit in df['unit_number'].unique():
+        unit_data = df[df['unit_number'] == unit]
+        max_cycle = unit_data['time_cycle'].max()
+        rul.append(max_cycle - unit_data['time_cycle'])
+    return np.concatenate(rul)
+
+train_data['RUL'] = compute_rul(train_data)
+train_data['RUL'] = np.minimum(train_data['RUL'], 130)
+def create_sequences(data, seq_length=50):
+    # Define selected_sensors inside the function if it's not a global variable
+    selected_sensors = ['sensor_2', 'sensor_3', 'sensor_4', 'sensor_7', 'sensor_8',
+                        'sensor_9', 'sensor_11', 'sensor_12', 'sensor_13', 'sensor_14',
+                        'sensor_15', 'sensor_17', 'sensor_20', 'sensor_21']
+    X, y = [], []
+    for unit in data['unit_number'].unique():
+        unit_data = data[data['unit_number'] == unit]
+        for i in range(len(unit_data) - seq_length):
+            X.append(unit_data[selected_sensors].iloc[i:i+seq_length].values)
+            y.append(unit_data['RUL'].iloc[i+seq_length])
+    return np.array(X), np.array(y), selected_sensors # Return selected_sensors
+
+seq_length = 50
+X_train_seq, y_train_seq, selected_sensors = create_sequences(train_data, seq_length) # Get selected_sensors
+
+# Séquences pour le test (dernière fenêtre de 50 cycles)
+X_test_seq = []
+for unit in test_data['unit_number'].unique():
+    # Use the same selected_sensors here as well
+    unit_data = test_data[test_data['unit_number'] == unit][selected_sensors] # Now selected_sensors is defined
+    if len(unit_data) >= seq_length:
+        X_test_seq.append(unit_data[-seq_length:].values)
+    else:
+        # Remplir avec zéros si la séquence est trop courte
+        padded = np.zeros((seq_length, len(selected_sensors)))
+        padded[-len(unit_data):] = unit_data.values
+        X_test_seq.append(padded)
+X_test_seq = np.array(X_test_seq)
+# Données pour ELM
+X_train = train_data[selected_sensors].values
+y_train = train_data['RUL'].values
+# Assuming you want the last record for each unit in the test data
+test_last = test_data.groupby('unit_number').last().reset_index()
+X_test = test_last[selected_sensors].values # Select the same sensors as training data
+
+# Entraîner et prédire
+elm = ELM(n_hidden=500)
+elm.fit(X_train, y_train)
+y_pred_elm = elm.predict(X_test)
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense
+
+# Modèle LSTM
+lstm_model = Sequential([
+    LSTM(50, activation='tanh', input_shape=(seq_length, len(selected_sensors))),
+    Dense(1)
+])
+lstm_model.compile(optimizer='adam', loss='mse')
+lstm_model.fit(X_train_seq, y_train_seq, epochs=10, batch_size=32, verbose=1)
+
+# Prédire
+y_pred_lstm = lstm_model.predict(X_test_seq).flatten()
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense
+
+# Modèle LSTM
+lstm_model = Sequential([
+    LSTM(50, activation='tanh', input_shape=(seq_length, len(selected_sensors))),
+    Dense(1)
+])
+lstm_model.compile(optimizer='adam', loss='mse')
+lstm_model.fit(X_train_seq, y_train_seq, epochs=10, batch_size=32, verbose=1)
+
+# Prédire
+y_pred_lstm = lstm_model.predict(X_test_seq).flatten()
+from tensorflow.keras.layers import Bidirectional
+
+# Modèle BLSTM
+blstm_model = Sequential([
+    Bidirectional(LSTM(50, activation='tanh'), input_shape=(seq_length, len(selected_sensors))),
+    Dense(1)
+])
+blstm_model.compile(optimizer='adam', loss='mse')
+blstm_model.fit(X_train_seq, y_train_seq, epochs=10, batch_size=32, verbose=1)
+
+# Prédire
+y_pred_blstm = blstm_model.predict(X_test_seq).flatten()
+class DOS_ELM:
+    def __init__(self, n_hidden=500, seq_length=50):
+        self.n_hidden = n_hidden
+        self.seq_length = seq_length
+
+    def fit(self, X_seq, y):
+        # Aplatir les séquences
+        X = X_seq.reshape(X_seq.shape[0], -1)
+        self.input_weights = np.random.randn(X.shape[1], self.n_hidden)
+        self.bias = np.random.randn(self.n_hidden)
+        H = np.tanh(X @ self.input_weights + self.bias)
+        self.output_weights = np.linalg.pinv(H) @ y
+
+    def predict(self, X_seq):
+        X = X_seq.reshape(X_seq.shape[0], -1)
+        H = np.tanh(X @ self.input_weights + self.bias)
+        return H @ self.output_weights
+
+# Entraîner et prédire
+dos_elm = DOS_ELM(n_hidden=500, seq_length=seq_length)
+dos_elm.fit(X_train_seq, y_train_seq)
+y_pred_dos_elm = dos_elm.predict(X_test_seq)
+import pandas as pd
+import numpy as np
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+
+# Charger les données RUL
+rul_data = pd.read_csv('RUL_FD001.txt', sep='\s+', header=None)
+rul_data.columns = ['RUL']
+true_rul = rul_data['RUL'].values  # Assign RUL values to true_rul
+
+def cmapss_score(y_true, y_pred):
+    score = 0
+    for i in range(len(y_true)):
+        diff = y_pred[i] - y_true[i]
+        if diff < 0:
+            score += np.exp(-diff / 13) - 1
+        else:
+            score += np.exp(diff / 10) - 1
+    return score
+
+# Dictionnaire pour stocker les résultats
+results = {}
