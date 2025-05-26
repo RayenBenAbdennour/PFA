@@ -1,3 +1,92 @@
 import pandas as pd
 train1 = pd.read_csv('train_FD001.txt', delimiter=' ')
 train1
+print(list(train1.columns))
+# Ajouter la ligne
+train1.loc[len(train1)] = new_row
+train1
+column_names = ['ID_Moteur', 'Cycle_Moteur',
+                'Paramètre1', 'Paramètre2', 'Paramètre3',
+                'Capteur1', 'Capteur2', 'Capteur3',
+                'Capteur4', 'Capteur5', 'Capteur6', 'Capteur7', 'Capteur8',
+                'Capteur9', 'Capteur10', 'Capteur11', 'Capteur12', 'Capteur13',
+                'Capteur14', 'Capteur15', 'Capteur16', 'Capteur17', 'Capteur18',
+                'Capteur19', 'Capteur20', 'Capteur21', 'Unnamed: 26','Unnamed: 27']
+train1.columns = column_names
+train1
+train1 = train1.drop(train1.columns[[-1, -2]], axis=1)
+train1
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+# 1. Extraire la dernière ligne
+row_to_move = train1.iloc[-1]
+
+# 2. Supprimer la dernière ligne du DataFrame
+train1 = train1.drop(train1.index[-1])
+
+# 3. Réinitialiser l'index sans garder l'ancien
+train1.reset_index(drop=True, inplace=True)
+
+# 4. Concaténer la ligne au début
+train1 = pd.concat([pd.DataFrame([row_to_move]), train1], ignore_index=True)
+train1
+train1.iloc[0, 1] = 1
+#print final dataframe (after pre-processing steps)
+train1
+# Vérifier si chaque ligne contient des valeurs nulles
+null_rows = train1.isnull().any(axis=1)
+# Afficher les lignes qui contiennent des NaN
+print(train1[null_rows])
+# Vérifier les NaN à partir de la 2ème colonne (index 1)
+null_values_from_second_column = train1.iloc[:, 1:].isnull().any(axis=1)
+
+# Afficher les lignes qui contiennent des NaN à partir de la 2ème colonne
+print(train1[null_values_from_second_column])
+import pandas as pd
+rul1 = pd.read_csv('RUL_FD001.txt', delimiter=' ')
+rul1
+rul1.drop(rul1.columns[-1], axis=1, inplace=True)
+rul1
+# Mettre les valeurs de l'en-tête dans la première ligne
+rul1.loc[-1] = rul1.columns  # Ajouter les valeurs des colonnes comme première ligne
+rul1.index = rul1.index + 1  # Décaler les indices pour que la nouvelle ligne devienne la ligne 0
+rul1 = rul1.sort_index()  # Trier les indices pour remettre l'ordre
+rul1
+rul1.columns.values[0] = 'RUL'
+rul1
+import pandas as pd
+test1 = pd.read_csv('test_FD001.txt', delimiter=' ')
+test1
+print(list(test1.columns))
+new_row = ['1', '1.1', '0.0023', '0.0003', '100.0', '518.67', '643.02', '1585.29', '1398.21', '14.62', '21.61', '553.90', '2388.04', '9050.17', '1.30', '47.20', '521.72', '2388.03', '8125.55', '8.4052', '0.03', '392', '2388', '100.00', '38.86', '23.3735', 'Unnamed: 26', 'Unnamed: 27']
+
+# Ajouter la ligne
+test1.loc[len(test1)] = new_row
+test1
+column_names = ['ID_Moteur', 'Cycle_Moteur',
+                'Paramètre1', 'Paramètre2', 'Paramètre3',
+                'Capteur1', 'Capteur2', 'Capteur3',
+                'Capteur4', 'Capteur5', 'Capteur6', 'Capteur7', 'Capteur8',
+                'Capteur9', 'Capteur10', 'Capteur11', 'Capteur12', 'Capteur13',
+                'Capteur14', 'Capteur15', 'Capteur16', 'Capteur17', 'Capteur18',
+                'Capteur19', 'Capteur20', 'Capteur21', 'Unnamed: 26','Unnamed: 27']
+test1.columns = column_names
+test1
+test1 = test1.drop(test1.columns[[-1, -2]], axis=1)
+test1
+# 1. Extraire la ligne 20630
+row_to_move = test1.loc[13095]
+
+# 2. Supprimer cette ligne du DataFrame
+test1 = test1.drop(13095)
+
+# 3. Réinitialiser l'index sans garder l'ancien
+test1.reset_index(drop=True, inplace=True)
+
+# 4. Concaténer la ligne au début
+test1 = pd.concat([pd.DataFrame([row_to_move]), test1], ignore_index=True)
+test1
+test1.iloc[0, 1] = 1
+#Final test data
+test1
