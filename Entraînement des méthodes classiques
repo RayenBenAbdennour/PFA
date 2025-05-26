@@ -1,0 +1,90 @@
+!pip install numpy==1.26.4 --quiet
+# ================================
+# 1. INSTALL REQUIRED LIBRARIES
+# ================================
+!pip install pycaret pandas-profiling --quiet
+
+# ================================
+# 2. IMPORT LIBRARIES
+# ================================
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from pandas_profiling import ProfileReport
+from pycaret.regression import *
+# ================================
+# 3. UPLOAD DATA FILES (RUN THIS CELL AND UPLOAD THE 3 FILES)
+# ================================
+from google.colab import files
+uploaded = files.upload()  # upload: train_FD001.txt, test_FD001.txt, RUL_FD001.txt
+# ================================
+# 4. READ & CLEAN DATA
+# ================================
+# Define column names
+column_names = ['unit_number', 'time_in_cycles'] + \
+               [f'op_setting_{i+1}' for i in range(3)] + \
+               [f'sensor_measurement_{i+1}' for i in range(21)]
+
+# Load files
+train_df = pd.read_csv("train_FD001.txt", sep="\s+", header=None, names=column_names)
+test_df = pd.read_csv("test_FD001.txt", sep="\s+", header=None, names=column_names)
+rul_df = pd.read_csv("RUL_FD001.txt", header=None, names=["RUL"])
+
+# Drop NaNs if any
+train_df.dropna(inplace=True)
+test_df.dropna(inplace=True)
+# ================================
+# 5. ADD RUL TO TRAIN & TEST SET
+# ================================
+# Train RUL = max cycle - current cycle
+rul_train_df = train_df.groupby("unit_number")["time_in_cycles"].max().reset_index()
+rul_train_df.columns = ["unit_number", "max_cycle"]
+train_df = train_df.merge(rul_train_df, on="unit_number", how="left")
+train_df["RUL"] = train_df["max_cycle"] - train_df["time_in_cycles"]
+train_df.drop(columns=["max_cycle"], inplace=True)
+
+# Test RUL = last cycle + RUL from file
+rul_df["unit_number"] = rul_df.index + 1
+rul_test_df = test_df.groupby("unit_number")["time_in_cycles"].max().reset_index()
+test_df = test_df.merge(rul_test_df, on=["unit_number", "time_in_cycles"])
+test_df = test_df.merge(rul_df, on="unit_number", how="left")
+# ================================
+# 6. PROFILE THE DATASET
+# ================================
+profile = ProfileReport(train_df, title="Train Data Profile", explorative=True)
+profile.to_file("train_data_profile.html")
+files.download("train_data_profile.html")  # download locally
+# ================================
+# 7. TRAIN-TEST SPLIT
+# ================================
+X = train_df.drop(columns=["unit_number", "RUL"])
+y = train_df["RUL"]
+X_train, X_valid, y_train, y_valid = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Combine for PyCaret input
+train_pycaret = X_train.copy()
+train_pycaret["RUL"] = y_train.reset_index(drop=True)
+# ================================
+# 8. PYCARET SETUP AND MODELING
+# ================================
+regression_setup = setup(
+    data=train_pycaret,
+    target='RUL',
+    session_id=42,
+    silent=True,
+    verbose=False,
+    normalize=True
+)
+
+# Train and compare top 3 models
+top_models = compare_models(n_select=3)
+blended_model = blend_models(estimator_list=top_models)
+final_model = finalize_model(blended_model)
+
+# Evaluate model (interactive)
+evaluate_model(final_model)
+# ================================
+# 9. SAVE MODEL
+# ================================
+save_model(final_model, 'best_rul_model')
+files.download('best_rul_model.pkl')  # download locally
